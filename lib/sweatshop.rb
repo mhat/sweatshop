@@ -6,6 +6,7 @@ $:.unshift(File.dirname(__FILE__))
 require 'message_queue/base'
 require 'message_queue/rabbit'
 require 'message_queue/kestrel'
+require 'message_queue/warren'
 require 'sweatshop/worker'
 
 module Sweatshop
@@ -47,6 +48,8 @@ module Sweatshop
         @stop.call if @stop.kind_of?(Proc)
         exit 
       end
+
+      queue.next_rabbit
       sleep 1 if wait
     end
   end

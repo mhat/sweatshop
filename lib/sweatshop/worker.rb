@@ -56,6 +56,7 @@ module Sweatshop
     end
 
     def self.enqueue(task)
+      queue.next_rabbit if @cycle
       queue.enqueue(queue_name, task)
     end
 
@@ -103,10 +104,17 @@ module Sweatshop
 
     def self.queue=(queue)
       @queue = queue
+      @cycle = true if @queue.is_a? MessageQueue::Warren
+      return @queue
     end
 
     def self.queue
-      @queue ||= Sweatshop.queue(queue_group.to_s)
+      unless @queue
+        @queue = Sweatshop.queue(queue_group.to_s)
+        @cycle = true if @queue.is_a? MessageQueue::Warren
+      end
+     
+      return @queue
     end
 
     def self.workers
