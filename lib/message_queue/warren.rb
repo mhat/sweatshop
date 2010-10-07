@@ -35,7 +35,7 @@ module MessageQueue
         ## on your way good sir, on your way
         return this_rabbit.send(method, *args)
 
-      rescue Carrot::AMQP::Server::ServerDown => ex
+      rescue MessageQueue::FuzzyRabbit::MarkedDead => ex
         if not this_rabbit.should_mark_as_dead?
           this_rabbit.disconnect
         else 
@@ -55,8 +55,7 @@ module MessageQueue
         if not rabbit.marked_dead?
           begin
             queue_size += rabbit.queue_size(queue_name)
-            puts "#{rabbit} : #{ queue_size }"
-          rescue Carrot::AMQP::Server::ServerDown
+          rescue MessageQueue::FuzzyRabbit::MarkedDead 
           end
         end
       end
@@ -69,6 +68,9 @@ module MessageQueue
       @rabbits
     end
 
+    def living_rabbits 
+      @rabbits.select{|rabbit| !rabbit.marked_dead? }
+    end
 
     def this_rabbit
       return @rabbits[@cursor]
@@ -115,6 +117,9 @@ module MessageQueue
 
 
   class FuzzyRabbit < Rabbit
+
+    class MarkedDead < RuntimeError; end
+
     attr_accessor :host
     attr_accessor :port
     attr_accessor :username
@@ -157,7 +162,10 @@ module MessageQueue
 
 
     def stop
-      @client.stop if @client
+      begin 
+        @client.stop if @client
+      rescue
+      end
     ensure
       @client = nil
     end
@@ -195,7 +203,14 @@ module MessageQueue
         @consecutive_errors_detected  = 0
         return ret
 
-      rescue Carrot::AMQP::Server::ServerDown => ex
+      rescue Errno::ECONNREFUSED,
+             Errno::ECONNRESET,
+             Errno::EPIPE,
+             Errno::ECONNABORTED,
+             Errno::EBADF,
+             Errno::EAGAIN,
+             Carrot::AMQP::Server::ServerDown => ex
+
         @consecutive_errors_detected += 1
         disconnect
 
@@ -203,7 +218,7 @@ module MessageQueue
           retry
         else
           mark_dead
-          raise ex
+          raise MarkedDead, ex
         end
       end
     end
