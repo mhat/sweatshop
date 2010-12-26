@@ -5,6 +5,7 @@ require 'yaml'
 $:.unshift(File.dirname(__FILE__))
 require 'message_queue/base'
 require 'message_queue/rabbit'
+require 'message_queue/warren'
 require 'message_queue/kestrel'
 require 'sweatshop/worker'
 
@@ -105,6 +106,16 @@ module Sweatshop
       all << [worker, worker.queue_size]
       all
     end
+  end
+
+  ## warren specific 
+  def queue_sizes_by_host
+    return [] unless queue.class == MessageQueue::Warren
+  
+    workers.inject([]) do |all, worker|
+      all << [worker, worker.queue_sizes]
+      all
+    end 
   end
 
   def queue(type = 'default')
